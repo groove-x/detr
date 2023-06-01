@@ -120,8 +120,6 @@ if __name__ == "__main__":
         im = Image.open(requests.get(url, stream=True).raw)
     elif args.path:
         path = Path(args.path)
-        # im = Image.open(str(path))
-        cvimg = cv2.imread(str(path))
-        im = cv2pil(cvimg)
+        im = Image.open(str(path))
 
     detect_image(im)
