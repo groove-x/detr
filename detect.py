@@ -14,6 +14,7 @@ import requests
 import torch
 import matplotlib.pyplot as plt
 import cv2
+import numpy as np
 
 
 """Let's first apply the regular image preprocessing using `DetrFeatureExtractor`. The feature extractor will resize the image (minimum size = 800, max size = 1333), and normalize it across the channels using the ImageNet mean and standard deviation."""
@@ -60,6 +61,23 @@ def plot_results_pillow(pil_img, prob, boxes):
         # draw.textbbox((xmin, ymin), text)
     return pil_img2
 
+def plot_results_opencv(cvimg, prob, boxes):
+    global model
+    cvimg2 = cvimg.copy()
+    colors = COLORS * 100
+    for p, (xmin, ymin, xmax, ymax), c in zip(prob, boxes.tolist(), colors):
+        c = [int(255 * a) for a in c]
+        cv2.rectangle(cvimg2,
+            pt1=(int(xmin), int(ymin)), pt2=(int(xmax), int(ymax)), color=tuple(c), thickness=3
+        )
+
+        cl = p.argmax()
+        text = f'{model.config.id2label[cl.item()]}: {p[cl]:0.2f}'
+        cv2.putText(cvimg2, text, org=(int(xmin), int(ymin)), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+            fontScale=0.6, color=(0, 0, 255), thickness=2)
+        # draw.textbbox((xmin, ymin), text)
+    return cvimg2
+
 def detect_image(im):
     global model
     feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
@@ -92,6 +110,9 @@ def detect_image(im):
     pil_img2 = plot_results_pillow(im, probas[keep], bboxes_scaled)
     pil_img2.save("last_detected_pillow.jpg")
 
+    cvimg = pil2cv(im)
+    cvimg2 = plot_results_opencv(cvimg, probas[keep], bboxes_scaled)
+    cv2.imwrite("last_detected_opencv.jpg", cvimg2)
 
 def cv2pil(image):
     ''' OpenCV型 -> PIL型 '''
