@@ -43,7 +43,7 @@ def plot_results(pil_img, prob, boxes):
 def plot_results_pillow(pil_img, prob, boxes):
     global model
     pil_img2 = pil_img.copy()
-    from PIL import ImageDraw
+    from PIL import ImageDraw, ImageFont
     draw = ImageDraw.Draw(pil_img2)
     colors = COLORS * 100
     for p, (xmin, ymin, xmax, ymax), c in zip(prob, boxes.tolist(), colors):
@@ -54,7 +54,9 @@ def plot_results_pillow(pil_img, prob, boxes):
 
         cl = p.argmax()
         text = f'{model.config.id2label[cl.item()]}: {p[cl]:0.2f}'
-        draw.textbbox((xmin, ymin), text)
+        # print(f"{text=}")
+        draw.text((xmin, ymin), text, "red")
+        # draw.textbbox((xmin, ymin), text)
     pil_img2.save("last_detected_pillow.jpg")
 
 def detect_image(im):
