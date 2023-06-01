@@ -163,6 +163,9 @@ if __name__ == "__main__":
         video_path = args.video
 
         video = cv2.VideoCapture(video_path)
+        out_video_path = "by_detr.mp4"
+        FPS = 15
+        writer = None
 
         # Extract frames from the video
         frames = []
@@ -181,6 +184,11 @@ if __name__ == "__main__":
         for frame in frames:
             im = Image.fromarray(frame)
             print(im.width)
+            W, H = im.width, im.height
+
+            if writer is None:
+                codec = cv2.VideoWriter_fourcc(*'mp4v')
+                writer = cv2.VideoWriter(out_video_path, codec, FPS, (W, H))
 
             encoding = feature_extractor(im, return_tensors="pt")
             outputs = model(**encoding)
@@ -194,6 +202,6 @@ if __name__ == "__main__":
             postprocessed_outputs = feature_extractor.post_process(outputs, target_sizes)
             bboxes_scaled = postprocessed_outputs[0]['boxes'][keep]
 
-            cvimg = pil2cv(im)
+            cvimg = frame
             cvimg2 = plot_results_opencv(cvimg, probas[keep], bboxes_scaled)
-            cv2.imwrite("last_detected_opencv.jpg", cvimg2)
+            writer.write(cvimg2)
