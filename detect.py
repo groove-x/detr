@@ -181,12 +181,7 @@ if __name__ == "__main__":
             print(im.width)
 
             encoding = feature_extractor(im, return_tensors="pt")
-
-            print(encoding['pixel_values'].shape)
-
             outputs = model(**encoding)
-
-            """Let's visualize the results!"""
 
             # keep only predictions of queries with 0.9+ confidence (excluding no-object class)
             probas = outputs.logits.softmax(-1)[0, :, :-1]
@@ -196,9 +191,6 @@ if __name__ == "__main__":
             target_sizes = torch.tensor(im.size[::-1]).unsqueeze(0)
             postprocessed_outputs = feature_extractor.post_process(outputs, target_sizes)
             bboxes_scaled = postprocessed_outputs[0]['boxes'][keep]
-
-            pil_img2 = plot_results_pillow(im, probas[keep], bboxes_scaled)
-            pil_img2.save("last_detected_pillow.jpg")
 
             cvimg = pil2cv(im)
             cvimg2 = plot_results_opencv(cvimg, probas[keep], bboxes_scaled)
