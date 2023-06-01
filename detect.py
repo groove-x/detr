@@ -63,7 +63,7 @@ def plot_results_pillow(pil_img, prob, boxes):
         # draw.textbbox((xmin, ymin), text)
     return pil_img2
 
-def plot_results_opencv(cvimg, prob, boxes):
+def plot_results_opencv(cvimg: np.ndarray, prob, boxes) -> np.ndarray:
     global model
     cvimg2 = cvimg.copy()
     colors = COLORS * 100
@@ -116,7 +116,7 @@ def detect_image(im):
     cvimg2 = plot_results_opencv(cvimg, probas[keep], bboxes_scaled)
     cv2.imwrite("last_detected_opencv.jpg", cvimg2)
 
-def cv2pil(image):
+def cv2pil(image: np.ndarray):
     ''' OpenCV型 -> PIL型 '''
     new_image = image.copy()
     if new_image.ndim == 2:  # モノクロ
@@ -129,7 +129,7 @@ def cv2pil(image):
     return new_image.copy()
 
 
-def pil2cv(image):
+def pil2cv(image) -> np.ndarray:
     ''' PIL型 -> OpenCV型 '''
     new_image = np.array(image, dtype=np.uint8)
     if new_image.ndim == 2:  # モノクロ
@@ -151,7 +151,8 @@ def count_frames_in_video(video):
     return i
 
 
-def select_frames_in_video(video, num_frames, N) -> List[np.ndarray]:
+def select_frames_in_video(video, num_frames: int, N: int) -> List[np.ndarray]:
+    rotate = True
     if num_frames > N:
         selected_idx = [int(num_frames * i / N) for i in range(N)]
     else:
@@ -163,11 +164,13 @@ def select_frames_in_video(video, num_frames, N) -> List[np.ndarray]:
         ret, frame = video.read()
         if not ret:
             break
+        if rotate:
+            frame = np.rot90(frame, 3)
         frames.append(frame)
     return frames
 
 
-def detect_movie(video_path):
+def detect_movie(video_path: str):
     # global video, num_frames, im
     video = cv2.VideoCapture(video_path)
     out_video_path = f"by_detr_{Path(video_path).stem}.mp4"
