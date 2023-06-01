@@ -13,6 +13,7 @@ from PIL import Image
 import requests
 import torch
 import matplotlib.pyplot as plt
+import cv2
 
 
 """Let's first apply the regular image preprocessing using `DetrFeatureExtractor`. The feature extractor will resize the image (minimum size = 800, max size = 1333), and normalize it across the channels using the ImageNet mean and standard deviation."""
@@ -72,6 +73,18 @@ def detect_image(im):
     plot_results(im, probas[keep], bboxes_scaled)
 
 
+def cv2pil(image):
+    ''' OpenCV型 -> PIL型 '''
+    new_image = image.copy()
+    if new_image.ndim == 2:  # モノクロ
+        pass
+    elif new_image.shape[2] == 3:  # カラー
+        new_image = cv2.cvtColor(new_image, cv2.COLOR_BGR2RGB)
+    elif new_image.shape[2] == 4:  # 透過
+        new_image = cv2.cvtColor(new_image, cv2.COLOR_BGRA2RGBA)
+    new_image = Image.fromarray(new_image)
+    return new_image.copy()
+
 if __name__ == "__main__":
     import argparse
     from pathlib import Path
@@ -87,6 +100,8 @@ if __name__ == "__main__":
         im = Image.open(requests.get(url, stream=True).raw)
     elif args.path:
         path = Path(args.path)
-        im = Image.open(str(path))
+        # im = Image.open(str(path))
+        cvimg = cv2.imread(str(path))
+        im = cv2pil(cvimg)
 
     detect_image(im)
