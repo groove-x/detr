@@ -161,13 +161,15 @@ if __name__ == "__main__":
         detect_image(im)
     elif args.video:
         video_path = args.video
-        from moviepy.editor import VideoFileClip
 
-        video = VideoFileClip(video_path)
+        video = cv2.VideoCapture(video_path)
 
         # Extract frames from the video
         frames = []
-        for i, frame in enumerate(video.iter_frames()):
+        i = 0
+        while True:
+            ret, frame = video.read()
+            i += 1
             frames.append(frame)
             if i > 10:
                 break
