@@ -41,6 +41,25 @@ def plot_results(pil_img, prob, boxes):
     plt.axis('off')
     plt.savefig("last_detected.jpg")
 
+def plot_results_pillow(pil_img, prob, boxes):
+    global model
+    pil_img2 = pil_img.copy()
+    from PIL import ImageDraw, ImageFont
+    draw = ImageDraw.Draw(pil_img2)
+    colors = COLORS * 100
+    for p, (xmin, ymin, xmax, ymax), c in zip(prob, boxes.tolist(), colors):
+        c = [int(255 * a) for a in c]
+        draw.rectangle(
+            [(xmin, ymin), (xmax, ymax)], outline=tuple(c), width=3
+        )
+
+        cl = p.argmax()
+        text = f'{model.config.id2label[cl.item()]}: {p[cl]:0.2f}'
+        # print(f"{text=}")
+        draw.text((xmin, ymin), text, "red")
+        # draw.textbbox((xmin, ymin), text)
+    return pil_img2
+
 def detect_image(im):
     global model
     feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
@@ -70,7 +89,8 @@ def detect_image(im):
     postprocessed_outputs = feature_extractor.post_process(outputs, target_sizes)
     bboxes_scaled = postprocessed_outputs[0]['boxes'][keep]
 
-    plot_results(im, probas[keep], bboxes_scaled)
+    pil_img2 = plot_results_pillow(im, probas[keep], bboxes_scaled)
+    pil_img2.save("last_detected_pillow.jpg")
 
 
 def cv2pil(image):
