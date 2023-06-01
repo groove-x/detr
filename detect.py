@@ -188,7 +188,7 @@ if __name__ == "__main__":
         video_path = args.video
 
         video = cv2.VideoCapture(video_path)
-        out_video_path = "by_detr.mp4"
+        out_video_path = f"by_detr_{Path(video_path).stem}.mp4"
         FPS = 15
         writer = None
 
@@ -198,7 +198,7 @@ if __name__ == "__main__":
         print(f"{num_frames=}")
 
         video = cv2.VideoCapture(video_path)
-        N = 100
+        N = 400
         frames = select_frames_in_video(video, N)
 
         global model
