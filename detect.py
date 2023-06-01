@@ -151,7 +151,7 @@ def count_frames_in_video(video):
     return i
 
 
-def select_frames_in_video(video, N) -> List[np.ndarray]:
+def select_frames_in_video(video, num_frames, N) -> List[np.ndarray]:
     selected_idx = [int(num_frames * i / N) for i in range(N)]
 
     frames = []
@@ -162,6 +162,47 @@ def select_frames_in_video(video, N) -> List[np.ndarray]:
             break
         frames.append(frame)
     return frames
+
+
+def detect_movie(video_path):
+    # global video, num_frames, im
+    video = cv2.VideoCapture(video_path)
+    out_video_path = f"by_detr_{Path(video_path).stem}.mp4"
+    FPS = 15
+    writer = None
+    # Extract frames from the video
+    num_frames = count_frames_in_video(video)
+    print(f"{num_frames=}")
+    video = cv2.VideoCapture(video_path)
+    N = 400
+    frames = select_frames_in_video(video, num_frames, N)
+    global model
+    feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
+    model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50")
+    for i, frame in enumerate(frames):
+        im = Image.fromarray(frame)
+        print(f"{i} / {N}")
+        W, H = im.width, im.height
+
+        if writer is None:
+            codec = cv2.VideoWriter_fourcc(*'mp4v')
+            writer = cv2.VideoWriter(out_video_path, codec, FPS, (W, H))
+
+        encoding = feature_extractor(im, return_tensors="pt")
+        outputs = model(**encoding)
+
+        # keep only predictions of queries with 0.9+ confidence (excluding no-object class)
+        probas = outputs.logits.softmax(-1)[0, :, :-1]
+        keep = probas.max(-1).values > 0.9
+
+        # rescale bounding boxes
+        target_sizes = torch.tensor(im.size[::-1]).unsqueeze(0)
+        postprocessed_outputs = feature_extractor.post_process(outputs, target_sizes)
+        bboxes_scaled = postprocessed_outputs[0]['boxes'][keep]
+
+        cvimg = frame
+        cvimg2 = plot_results_opencv(cvimg, probas[keep], bboxes_scaled)
+        writer.write(cvimg2)
 
 
 if __name__ == "__main__":
@@ -186,46 +227,4 @@ if __name__ == "__main__":
         detect_image(im)
     elif args.video:
         video_path = args.video
-
-        video = cv2.VideoCapture(video_path)
-        out_video_path = f"by_detr_{Path(video_path).stem}.mp4"
-        FPS = 15
-        writer = None
-
-        # Extract frames from the video
-
-        num_frames =  count_frames_in_video(video)
-        print(f"{num_frames=}")
-
-        video = cv2.VideoCapture(video_path)
-        N = 400
-        frames = select_frames_in_video(video, N)
-
-        global model
-        feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
-        model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50")
-
-        for i, frame in enumerate(frames):
-            im = Image.fromarray(frame)
-            print(f"{i} / {N}")
-            W, H = im.width, im.height
-
-            if writer is None:
-                codec = cv2.VideoWriter_fourcc(*'mp4v')
-                writer = cv2.VideoWriter(out_video_path, codec, FPS, (W, H))
-
-            encoding = feature_extractor(im, return_tensors="pt")
-            outputs = model(**encoding)
-
-            # keep only predictions of queries with 0.9+ confidence (excluding no-object class)
-            probas = outputs.logits.softmax(-1)[0, :, :-1]
-            keep = probas.max(-1).values > 0.9
-
-            # rescale bounding boxes
-            target_sizes = torch.tensor(im.size[::-1]).unsqueeze(0)
-            postprocessed_outputs = feature_extractor.post_process(outputs, target_sizes)
-            bboxes_scaled = postprocessed_outputs[0]['boxes'][keep]
-
-            cvimg = frame
-            cvimg2 = plot_results_opencv(cvimg, probas[keep], bboxes_scaled)
-            writer.write(cvimg2)
+        detect_movie(video_path)
