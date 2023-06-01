@@ -57,7 +57,7 @@ def plot_results_pillow(pil_img, prob, boxes):
         # print(f"{text=}")
         draw.text((xmin, ymin), text, "red")
         # draw.textbbox((xmin, ymin), text)
-    pil_img2.save("last_detected_pillow.jpg")
+    return pil_img2
 
 def detect_image(im):
     global model
@@ -88,7 +88,8 @@ def detect_image(im):
     postprocessed_outputs = feature_extractor.post_process(outputs, target_sizes)
     bboxes_scaled = postprocessed_outputs[0]['boxes'][keep]
 
-    plot_results_pillow(im, probas[keep], bboxes_scaled)
+    pil_img2 = plot_results_pillow(im, probas[keep], bboxes_scaled)
+    pil_img2.save("last_detected_pillow.jpg")
 
 
 if __name__ == "__main__":
