@@ -152,7 +152,10 @@ def count_frames_in_video(video):
 
 
 def select_frames_in_video(video, num_frames, N) -> List[np.ndarray]:
-    selected_idx = [int(num_frames * i / N) for i in range(N)]
+    if num_frames > N:
+        selected_idx = [int(num_frames * i / N) for i in range(N)]
+    else:
+        selected_idx = [i for i in range(N)]
 
     frames = []
     for i in selected_idx:
@@ -181,7 +184,7 @@ def detect_movie(video_path):
     model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50")
     for i, frame in enumerate(frames):
         im = Image.fromarray(frame)
-        print(f"{i} / {N}")
+        print(f"{i} / {len(frames)}")
         W, H = im.width, im.height
 
         if writer is None:
