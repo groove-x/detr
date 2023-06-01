@@ -145,8 +145,9 @@ if __name__ == "__main__":
     SAMPLE_URL = 'http://images.cocodataset.org/val2017/000000039769.jpg'
     parser = argparse.ArgumentParser(description="DETR detection")
     group = parser.add_argument_group('input_type')
-    group.add_argument("--path", help="path to images or video")
+    group.add_argument("--path", help="path to image")
     group.add_argument("--url", help="URL to image")
+    group.add_argument("--video", help="path to video")
 
     args = parser.parse_args()
     if args.url:
@@ -156,4 +157,49 @@ if __name__ == "__main__":
         path = Path(args.path)
         im = Image.open(str(path))
 
-    detect_image(im)
+    if args.url or args.path:
+        detect_image(im)
+    elif args.video:
+        video_path = args.video
+        from moviepy.editor import VideoFileClip
+
+        video = VideoFileClip(video_path)
+
+        # Extract frames from the video
+        frames = []
+        for i, frame in enumerate(video.iter_frames()):
+            frames.append(frame)
+            if i > 10:
+                break
+
+        global model
+        feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
+        model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50")
+
+        for frame in frames:
+            im = Image.fromarray(frame)
+            print(im.width)
+
+            encoding = feature_extractor(im, return_tensors="pt")
+
+            print(encoding['pixel_values'].shape)
+
+            outputs = model(**encoding)
+
+            """Let's visualize the results!"""
+
+            # keep only predictions of queries with 0.9+ confidence (excluding no-object class)
+            probas = outputs.logits.softmax(-1)[0, :, :-1]
+            keep = probas.max(-1).values > 0.9
+
+            # rescale bounding boxes
+            target_sizes = torch.tensor(im.size[::-1]).unsqueeze(0)
+            postprocessed_outputs = feature_extractor.post_process(outputs, target_sizes)
+            bboxes_scaled = postprocessed_outputs[0]['boxes'][keep]
+
+            pil_img2 = plot_results_pillow(im, probas[keep], bboxes_scaled)
+            pil_img2.save("last_detected_pillow.jpg")
+
+            cvimg = pil2cv(im)
+            cvimg2 = plot_results_opencv(cvimg, probas[keep], bboxes_scaled)
+            cv2.imwrite("last_detected_opencv.jpg", cvimg2)
