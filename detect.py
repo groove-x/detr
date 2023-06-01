@@ -168,14 +168,32 @@ if __name__ == "__main__":
         writer = None
 
         # Extract frames from the video
+
+        def count_frames_in_video(video):
+            i = 0
+            while True:
+                ret, _ = video.read()
+                if not ret:
+                    break
+                i += 1
+            return i
+
+        num_frames =  count_frames_in_video(video)
+        print(f"{num_frames=}")
+
+        video = cv2.VideoCapture(video_path)
+
+        selected_idx = [int(num_frames * i / 10) for i in range(10)]
+
         frames = []
         i = 0
         while True:
             ret, frame = video.read()
-            i += 1
-            frames.append(frame)
-            if i > 10:
+            if not ret:
                 break
+            if i in selected_idx:
+                frames.append(frame)
+            i += 1
 
         global model
         feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
