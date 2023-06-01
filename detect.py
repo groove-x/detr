@@ -59,6 +59,23 @@ def plot_results_pillow(pil_img, prob, boxes):
         # draw.textbbox((xmin, ymin), text)
     return pil_img2
 
+def plot_results_opencv(cvimg, prob, boxes):
+    global model
+    cvimg2 = cvimg.copy()
+    colors = COLORS * 100
+    for p, (xmin, ymin, xmax, ymax), c in zip(prob, boxes.tolist(), colors):
+        c = [int(255 * a) for a in c]
+        cvimg2.rectangle(
+            [(xmin, ymin), (xmax, ymax)], outline=tuple(c), width=3
+        )
+
+        cl = p.argmax()
+        text = f'{model.config.id2label[cl.item()]}: {p[cl]:0.2f}'
+        # print(f"{text=}")
+        cvimg2.putText((xmin, ymin), text, color=(0, 0, 255))
+        # draw.textbbox((xmin, ymin), text)
+    return cvimg2
+
 def detect_image(im):
     global model
     feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
@@ -91,6 +108,9 @@ def detect_image(im):
     pil_img2 = plot_results_pillow(im, probas[keep], bboxes_scaled)
     pil_img2.save("last_detected_pillow.jpg")
 
+    cvimg =
+    cvimg2 = plot_results_pillow(cvimg, probas[keep], bboxes_scaled)
+    cvimg2.save("last_detected_opencv.jpg")
 
 if __name__ == "__main__":
     import argparse
