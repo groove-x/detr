@@ -152,7 +152,7 @@ def count_frames_in_video(video):
 
 
 def select_frames_in_video(video, num_frames: int, N: int) -> List[np.ndarray]:
-    rotate = True
+    rotate = False
     if num_frames > N:
         selected_idx = [int(num_frames * i / N) for i in range(N)]
     else:
