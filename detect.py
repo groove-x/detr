@@ -182,18 +182,17 @@ if __name__ == "__main__":
         print(f"{num_frames=}")
 
         video = cv2.VideoCapture(video_path)
-
-        selected_idx = [int(num_frames * i / 10) for i in range(10)]
+        N = 100
+        selected_idx = [int(num_frames * i / N) for i in range(N)]
 
         frames = []
         i = 0
-        while True:
+        for i in selected_idx:
+            video.set(cv2.CAP_PROP_POS_FRAMES, i)
             ret, frame = video.read()
             if not ret:
                 break
-            if i in selected_idx:
-                frames.append(frame)
-            i += 1
+            frames.append(frame)
 
         global model
         feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
