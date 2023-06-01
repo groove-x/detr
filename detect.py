@@ -186,7 +186,6 @@ if __name__ == "__main__":
         selected_idx = [int(num_frames * i / N) for i in range(N)]
 
         frames = []
-        i = 0
         for i in selected_idx:
             video.set(cv2.CAP_PROP_POS_FRAMES, i)
             ret, frame = video.read()
@@ -198,9 +197,9 @@ if __name__ == "__main__":
         feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
         model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50")
 
-        for frame in frames:
+        for i, frame in enumerate(frames):
             im = Image.fromarray(frame)
-            print(im.width)
+            print(f"{i} / {N}")
             W, H = im.width, im.height
 
             if writer is None:
