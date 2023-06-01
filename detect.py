@@ -9,8 +9,10 @@
 Let's use the image of the two cats chilling on a couch once more. It's part of the [COCO](https://cocodataset.org/#home) object detection validation 2017 dataset.
 """
 
-from PIL import Image
+from typing import List
 import requests
+
+from PIL import Image
 import torch
 import matplotlib.pyplot as plt
 import cv2
@@ -139,6 +141,29 @@ def pil2cv(image):
     return new_image
 
 
+def count_frames_in_video(video):
+    i = 0
+    while True:
+        ret, _ = video.read()
+        if not ret:
+            break
+        i += 1
+    return i
+
+
+def select_frames_in_video(video, N) -> List[np.ndarray]:
+    selected_idx = [int(num_frames * i / N) for i in range(N)]
+
+    frames = []
+    for i in selected_idx:
+        video.set(cv2.CAP_PROP_POS_FRAMES, i)
+        ret, frame = video.read()
+        if not ret:
+            break
+        frames.append(frame)
+    return frames
+
+
 if __name__ == "__main__":
     import argparse
     from pathlib import Path
@@ -169,29 +194,12 @@ if __name__ == "__main__":
 
         # Extract frames from the video
 
-        def count_frames_in_video(video):
-            i = 0
-            while True:
-                ret, _ = video.read()
-                if not ret:
-                    break
-                i += 1
-            return i
-
         num_frames =  count_frames_in_video(video)
         print(f"{num_frames=}")
 
         video = cv2.VideoCapture(video_path)
         N = 100
-        selected_idx = [int(num_frames * i / N) for i in range(N)]
-
-        frames = []
-        for i in selected_idx:
-            video.set(cv2.CAP_PROP_POS_FRAMES, i)
-            ret, frame = video.read()
-            if not ret:
-                break
-            frames.append(frame)
+        frames = select_frames_in_video(video, N)
 
         global model
         feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
