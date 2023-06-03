@@ -9,8 +9,10 @@
 Let's use the image of the two cats chilling on a couch once more. It's part of the [COCO](https://cocodataset.org/#home) object detection validation 2017 dataset.
 """
 
-from PIL import Image
+from typing import List
 import requests
+
+from PIL import Image
 import torch
 import matplotlib.pyplot as plt
 import cv2
@@ -61,7 +63,7 @@ def plot_results_pillow(pil_img, prob, boxes):
         # draw.textbbox((xmin, ymin), text)
     return pil_img2
 
-def plot_results_opencv(cvimg, prob, boxes):
+def plot_results_opencv(cvimg: np.ndarray, prob, boxes) -> np.ndarray:
     global model
     cvimg2 = cvimg.copy()
     colors = COLORS * 100
@@ -114,29 +116,99 @@ def detect_image(im):
     cvimg2 = plot_results_opencv(cvimg, probas[keep], bboxes_scaled)
     cv2.imwrite("last_detected_opencv.jpg", cvimg2)
 
-def cv2pil(image):
-    ''' OpenCV型 -> PIL型 '''
+def cv2pil(image: np.ndarray):
+    ''' OpenCV -> PIL'''
     new_image = image.copy()
-    if new_image.ndim == 2:  # モノクロ
+    if new_image.ndim == 2:
         pass
-    elif new_image.shape[2] == 3:  # カラー
+    elif new_image.shape[2] == 3:
         new_image = cv2.cvtColor(new_image, cv2.COLOR_BGR2RGB)
-    elif new_image.shape[2] == 4:  # 透過
+    elif new_image.shape[2] == 4:
         new_image = cv2.cvtColor(new_image, cv2.COLOR_BGRA2RGBA)
     new_image = Image.fromarray(new_image)
     return new_image.copy()
 
 
-def pil2cv(image):
-    ''' PIL型 -> OpenCV型 '''
+def pil2cv(image) -> np.ndarray:
+    ''' PIL -> OpenCV '''
     new_image = np.array(image, dtype=np.uint8)
-    if new_image.ndim == 2:  # モノクロ
+    if new_image.ndim == 2:
         pass
-    elif new_image.shape[2] == 3:  # カラー
+    elif new_image.shape[2] == 3:
         new_image = cv2.cvtColor(new_image, cv2.COLOR_RGB2BGR)
-    elif new_image.shape[2] == 4:  # 透過
+    elif new_image.shape[2] == 4:
         new_image = cv2.cvtColor(new_image, cv2.COLOR_RGBA2BGRA)
     return new_image
+
+
+def count_frames_in_video(video):
+    i = 0
+    while True:
+        ret, _ = video.read()
+        if not ret:
+            break
+        i += 1
+    return i
+
+
+def select_frames_in_video(video, num_frames: int, N: int) -> List[np.ndarray]:
+    rotate = False
+    if num_frames > N:
+        selected_idx = [int(num_frames * i / N) for i in range(N)]
+    else:
+        selected_idx = [i for i in range(N)]
+
+    frames = []
+    for i in selected_idx:
+        video.set(cv2.CAP_PROP_POS_FRAMES, i)
+        ret, frame = video.read()
+        if not ret:
+            break
+        if rotate:
+            frame = np.rot90(frame, 3)
+        frames.append(frame)
+    return frames
+
+
+def detect_movie(video_path: str):
+    # global video, num_frames, im
+    video = cv2.VideoCapture(video_path)
+    out_video_path = f"by_detr_{Path(video_path).stem}.mp4"
+    FPS = 15
+    writer = None
+    # Extract frames from the video
+    num_frames = count_frames_in_video(video)
+    print(f"{num_frames=}")
+    video = cv2.VideoCapture(video_path)
+    N = 400
+    frames = select_frames_in_video(video, num_frames, N)
+    global model
+    feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50")
+    model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50")
+    for i, frame in enumerate(frames):
+        im = Image.fromarray(frame)
+        print(f"{i} / {len(frames)}")
+        W, H = im.width, im.height
+
+        if writer is None:
+            codec = cv2.VideoWriter_fourcc(*'mp4v')
+            writer = cv2.VideoWriter(out_video_path, codec, FPS, (W, H))
+
+        encoding = feature_extractor(im, return_tensors="pt")
+        outputs = model(**encoding)
+
+        # keep only predictions of queries with 0.9+ confidence (excluding no-object class)
+        probas = outputs.logits.softmax(-1)[0, :, :-1]
+        keep = probas.max(-1).values > 0.9
+
+        # rescale bounding boxes
+        target_sizes = torch.tensor(im.size[::-1]).unsqueeze(0)
+        postprocessed_outputs = feature_extractor.post_process(outputs, target_sizes)
+        bboxes_scaled = postprocessed_outputs[0]['boxes'][keep]
+
+        cvimg = frame
+        cvimg2 = plot_results_opencv(cvimg, probas[keep], bboxes_scaled)
+        writer.write(cvimg2)
 
 
 if __name__ == "__main__":
@@ -145,8 +217,9 @@ if __name__ == "__main__":
     SAMPLE_URL = 'http://images.cocodataset.org/val2017/000000039769.jpg'
     parser = argparse.ArgumentParser(description="DETR detection")
     group = parser.add_argument_group('input_type')
-    group.add_argument("--path", help="path to images or video")
+    group.add_argument("--path", help="path to image")
     group.add_argument("--url", help="URL to image")
+    group.add_argument("--video", help="path to video")
 
     args = parser.parse_args()
     if args.url:
@@ -156,4 +229,8 @@ if __name__ == "__main__":
         path = Path(args.path)
         im = Image.open(str(path))
 
-    detect_image(im)
+    if args.url or args.path:
+        detect_image(im)
+    elif args.video:
+        video_path = args.video
+        detect_movie(video_path)
